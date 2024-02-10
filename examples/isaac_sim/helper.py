@@ -22,7 +22,7 @@ from omni.isaac.core.robots import Robot
 from omni.isaac.core.utils.nucleus import get_assets_root_path
 from omni.isaac.core.utils.stage import add_reference_to_stage
 # CuRobo
-from curobo.util.logger import log_warn
+from curobo.util.logger import log_warn, log_error
 
 ISAAC_SIM_23 = False
 try:
@@ -38,7 +38,8 @@ from typing import Optional
 
 # Third Party
 from omni.isaac.core.utils.extensions import enable_extension
-
+import carb
+import os
 # CuRobo
 from curobo.util_file import get_assets_path, get_filename, get_path_of_dir, join_path
 
@@ -93,6 +94,9 @@ def add_robot_to_scene(
         full_path = asset_path + f'{robot_config["kinematics"]["isaac_usd_path"]}'
         robot_path = get_path_of_dir(full_path)
         filename = get_filename(full_path)
+        print(full_path)
+        if 'usd' not in filename or 'omniverse' not in full_path and not os.path.exists(full_path):
+            log_error("Couldn't find the usd path!")
         robot_path = f'/World/{robot_name}'
         add_reference_to_stage(usd_path=full_path, prim_path=robot_path)
         robot_p = Robot(
