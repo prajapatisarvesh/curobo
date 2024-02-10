@@ -19,7 +19,8 @@ from omni.isaac.core import World
 from omni.isaac.core.materials import OmniPBR
 from omni.isaac.core.objects import cuboid
 from omni.isaac.core.robots import Robot
-
+from omni.isaac.core.utils.nucleus import get_assets_root_path
+from omni.isaac.core.utils.stage import add_reference_to_stage
 # CuRobo
 from curobo.util.logger import log_warn
 
@@ -82,42 +83,60 @@ def add_robot_to_scene(
     import_config.default_drive_type = _urdf.UrdfJointTargetType.JOINT_DRIVE_POSITION
     import_config.distance_scale = 1
     import_config.density = 0.0
-    asset_path = get_assets_path()
-    if (
-        "external_asset_path" in robot_config["kinematics"]
-        and robot_config["kinematics"]["external_asset_path"] is not None
-    ):
-        asset_path = robot_config["kinematics"]["external_asset_path"]
-    full_path = join_path(asset_path, robot_config["kinematics"]["urdf_path"])
-    robot_path = get_path_of_dir(full_path)
-    filename = get_filename(full_path)
-    imported_robot = urdf_interface.parse_urdf(robot_path, filename, import_config)
-    dest_path = subroot
-    robot_path = urdf_interface.import_robot(
-        robot_path,
-        filename,
-        imported_robot,
-        import_config,
-        dest_path,
-    )
+    if load_from_usd:
+        asset_path = get_assets_path()
+        if (
+            "isaac_usd_path" in robot_config["kinematics"]
+            and robot_config["kinematics"]["isaac_usd_path"] != ""
+        ):
+            asset_path = get_assets_root_path()
+        full_path = asset_path + f'{robot_config["kinematics"]["isaac_usd_path"]}'
+        robot_path = get_path_of_dir(full_path)
+        filename = get_filename(full_path)
+        robot_path = f'/World/{robot_name}'
+        add_reference_to_stage(usd_path=full_path, prim_path=robot_path)
+        robot_p = Robot(
+            prim_path=robot_path,
+            name=robot_name,
+            position=position,
+        )
+        robot = my_world.scene.add(robot_p)
+    else:
+        asset_path = get_assets_path()
+        if (
+            "external_asset_path" in robot_config["kinematics"]
+            and robot_config["kinematics"]["external_asset_path"] is not None
+        ):
+            asset_path = robot_config["kinematics"]["external_asset_path"]
+        full_path = join_path(asset_path, robot_config["kinematics"]["urdf_path"])
+        robot_path = get_path_of_dir(full_path)
+        filename = get_filename(full_path)
+        imported_robot = urdf_interface.parse_urdf(robot_path, filename, import_config)
+        dest_path = subroot
+        robot_path = urdf_interface.import_robot(
+            robot_path,
+            filename,
+            imported_robot,
+            import_config,
+            dest_path,
+        )
+        # prim_path = omni.usd.get_stage_next_free_path(
+        # my_world.scene.stage, str(my_world.scene.stage.GetDefaultPrim().GetPath()) + robot_path, False)
+        # print(prim_path)
+        # robot_prim = my_world.scene.stage.OverridePrim(prim_path)
+        # robot_prim.GetReferences().AddReference(dest_path)
+        robot_p = Robot(
+            prim_path=robot_path,
+            name=robot_name,
+            position=position,
+        )
+        if ISAAC_SIM_23:
+            robot_p.set_solver_velocity_iteration_count(4)
+            robot_p.set_solver_position_iteration_count(44)
 
-    # prim_path = omni.usd.get_stage_next_free_path(
-    # my_world.scene.stage, str(my_world.scene.stage.GetDefaultPrim().GetPath()) + robot_path, False)
-    # print(prim_path)
-    # robot_prim = my_world.scene.stage.OverridePrim(prim_path)
-    # robot_prim.GetReferences().AddReference(dest_path)
-    robot_p = Robot(
-        prim_path=robot_path,
-        name=robot_name,
-        position=position,
-    )
-    if ISAAC_SIM_23:
-        robot_p.set_solver_velocity_iteration_count(4)
-        robot_p.set_solver_position_iteration_count(44)
+            my_world._physics_context.set_solver_type("PGS")
 
-        my_world._physics_context.set_solver_type("PGS")
-
-    robot = my_world.scene.add(robot_p)
+        robot = my_world.scene.add(robot_p)
 
     return robot, robot_path
 
