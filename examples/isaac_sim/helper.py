@@ -96,7 +96,8 @@ def add_robot_to_scene(
         filename = get_filename(full_path)
         print(full_path)
         if 'usd' not in filename or 'omniverse' not in full_path and not os.path.exists(full_path):
-            log_error("Couldn't find the usd path!")
+            # log_error("Couldn't find the usd path!")
+            full_path =  os.path.join(full_path,robot_config["kinematics"]["usd_path"])
         robot_path = f'/World/{robot_name}'
         add_reference_to_stage(usd_path=full_path, prim_path=robot_path)
         robot_p = Robot(
